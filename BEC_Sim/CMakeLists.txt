@@ -61,18 +61,25 @@ if(UNIX)
     target_link_libraries(bec_sim PRIVATE m pthread)
 endif()
 
-# Compiler flags (only for Release builds)
+# Compiler flags
 if(MSVC)
-    target_compile_options(bec_sim PRIVATE /W3 /MP)
-    target_compile_options(bec_sim PRIVATE "$<$<CONFIG:RELEASE>:/O2;/Oi;/GL;/fp:fast;/arch:AVX2>")
+    # C++ flags only (not for CUDA files)
+    target_compile_options(bec_sim PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/W3;/MP>")
+    # Release optimization for C++ only
+    target_compile_options(bec_sim PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:RELEASE>>:/O2;/Oi;/GL;/fp:fast;/arch:AVX2>")
 else()
-    target_compile_options(bec_sim PRIVATE "$<$<CONFIG:RELEASE>:-O3;-march=native;-ffast-math>")
+    # GCC/Clang flags
+    target_compile_options(bec_sim PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:RELEASE>:-O3;-march=native;-ffast-math>>")
 endif()
 
-# CUDA compiler flags
+# CUDA compiler flags (separate from C++ flags)
 if(USE_CUDA)
+    # Always use fast math for CUDA
     target_compile_options(bec_sim PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>")
+    # Optimization for CUDA in Release builds
     target_compile_options(bec_sim PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:RELEASE>>:-O3>")
+    # Suppress deprecated GPU target warning
+    target_compile_options(bec_sim PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:-Wno-deprecated-gpu-targets>")
 endif()
 
 # Install
