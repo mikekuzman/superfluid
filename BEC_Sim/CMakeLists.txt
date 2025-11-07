@@ -61,11 +61,18 @@ if(UNIX)
     target_link_libraries(bec_sim PRIVATE m pthread)
 endif()
 
-# Compiler flags
+# Compiler flags (only for Release builds)
 if(MSVC)
-    target_compile_options(bec_sim PRIVATE /O2 /Oi /GL /fp:fast /arch:AVX2 /W3 /MP)
+    target_compile_options(bec_sim PRIVATE /W3 /MP)
+    target_compile_options(bec_sim PRIVATE "$<$<CONFIG:RELEASE>:/O2;/Oi;/GL;/fp:fast;/arch:AVX2>")
 else()
-    target_compile_options(bec_sim PRIVATE -O3 -march=native -ffast-math)
+    target_compile_options(bec_sim PRIVATE "$<$<CONFIG:RELEASE>:-O3;-march=native;-ffast-math>")
+endif()
+
+# CUDA compiler flags
+if(USE_CUDA)
+    target_compile_options(bec_sim PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>")
+    target_compile_options(bec_sim PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:RELEASE>>:-O3>")
 endif()
 
 # Install

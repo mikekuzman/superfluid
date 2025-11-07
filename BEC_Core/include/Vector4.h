@@ -1,5 +1,6 @@
 #pragma once
 
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <ostream>
 
@@ -44,6 +45,11 @@ struct Vector4 {
 
     Vector4& operator*=(float scalar) {
         w *= scalar; x *= scalar; y *= scalar; z *= scalar;
+        return *this;
+    }
+
+    Vector4& operator/=(float scalar) {
+        w /= scalar; x /= scalar; y /= scalar; z /= scalar;
         return *this;
     }
 
@@ -115,6 +121,11 @@ struct Vector3 {
 
     Vector3 operator/(float scalar) const {
         return Vector3(x / scalar, y / scalar, z / scalar);
+    }
+
+    Vector3& operator/=(float scalar) {
+        x /= scalar; y /= scalar; z /= scalar;
+        return *this;
     }
 
     float dot(const Vector3& other) const {
