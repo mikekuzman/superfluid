@@ -9,7 +9,13 @@
 
 #ifdef USE_CUDA
 #include <cuda_runtime.h>
+#include <cuComplex.h>
 #include <curand.h>
+
+// Custom float4 for compatibility
+struct float4_custom {
+    float w, x, y, z;
+};
 
 // CUDA kernel declarations
 extern "C" {
@@ -41,11 +47,6 @@ extern "C" {
         cuDoubleComplex*, const float*, const float*,
         float, int);
 }
-
-// Custom float4 for compatibility
-struct float4_custom {
-    float w, x, y, z;
-};
 
 #define CUDA_CHECK(call) \
     do { \
