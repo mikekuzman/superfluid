@@ -42,6 +42,9 @@ if(USE_CUDA)
         CUDA_ARCHITECTURES "61;75;86"  # SM 6.1 (GTX 1070), 7.5, 8.6
     )
 
+    # Define USE_CUDA preprocessor macro so C++ code knows CUDA is available
+    target_compile_definitions(bec_sim PRIVATE USE_CUDA)
+
     target_link_libraries(bec_sim PRIVATE CUDA::cudart CUDA::curand)
 else()
     add_executable(bec_sim ${SIM_SOURCES} ${SIM_HEADERS})
