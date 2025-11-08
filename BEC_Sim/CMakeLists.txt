@@ -85,7 +85,14 @@ if(USE_CUDA)
     target_compile_options(bec_sim PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:-Wno-deprecated-gpu-targets>")
 endif()
 
+# BEC file inspector tool
+add_executable(inspect_bec src/inspect_bec.cpp)
+target_include_directories(inspect_bec PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(inspect_bec PRIVATE BEC_Core)
+
 # Install
-install(TARGETS bec_sim
+install(TARGETS bec_sim inspect_bec
     RUNTIME DESTINATION bin
 )

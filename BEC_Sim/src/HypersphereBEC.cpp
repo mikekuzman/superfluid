@@ -81,6 +81,7 @@ HypersphereBEC::HypersphereBEC(const SimulationParams& params)
     std::cout << "  omega = " << m_params.omega << std::endl;
     std::cout << "  dt = " << m_params.dt << std::endl;
     std::cout << "  n_neighbors = " << m_params.n_neighbors << std::endl;
+    std::cout << "  random_seed = " << m_params.random_seed << std::endl;
 
     // Initialize geometry
     initialize_geometry();
