@@ -3,6 +3,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <iostream>
+#include <algorithm>
 
 // Define M_PI if not defined (for MSVC)
 #ifndef M_PI
@@ -25,6 +26,7 @@ std::vector<VortexInfo> VortexDetector::detect_vortices(
     std::cout << "Found " << cores.size() << " potential vortex cores" << std::endl;
 
     // For each core, calculate winding number
+    std::vector<int> winding_numbers;
     for (size_t core_idx : cores) {
         // Skip poles (indices 0 and 1)
         if (core_idx == 0 || core_idx == 1) continue;
@@ -36,12 +38,30 @@ std::vector<VortexInfo> VortexDetector::detect_vortices(
             psi
         );
 
+        winding_numbers.push_back(winding);
+
         if (std::abs(winding) > 0) {
             VortexInfo vortex;
             vortex.position_4d = coords[core_idx];
             vortex.quantum_number = winding;
             vortex.strength = 2.0f * M_PI * winding;
             vortices.push_back(vortex);
+        }
+    }
+
+    // Debug: show winding number statistics
+    if (!winding_numbers.empty()) {
+        int non_zero = 0;
+        for (int w : winding_numbers) {
+            if (w != 0) non_zero++;
+        }
+        std::cout << "[DEBUG] Winding numbers: " << non_zero << " non-zero out of "
+                  << winding_numbers.size() << " cores" << std::endl;
+
+        // Show first few
+        size_t show_count = std::min(static_cast<size_t>(5), winding_numbers.size());
+        for (size_t i = 0; i < show_count; ++i) {
+            std::cout << "  Core " << i << ": winding = " << winding_numbers[i] << std::endl;
         }
     }
 
@@ -56,12 +76,44 @@ std::vector<size_t> VortexDetector::find_vortex_cores(
 {
     std::vector<size_t> cores;
 
+    // Calculate density statistics for debugging
+    std::vector<double> densities;
+    for (size_t i = 2; i < psi.size(); ++i) {
+        densities.push_back(ComplexOps::abs_squared(psi[i]));
+    }
+
+    std::sort(densities.begin(), densities.end());
+    double min_density = densities.front();
+    double max_density = densities.back();
+    double median_density = densities[densities.size() / 2];
+
+    // Use adaptive threshold: fraction of median density
+    double adaptive_threshold = 0.3 * median_density;
+    double actual_threshold = std::max(static_cast<double>(density_threshold), adaptive_threshold);
+
+    std::cout << "[DEBUG] Vortex core detection:" << std::endl;
+    std::cout << "  Density range: [" << min_density << ", " << max_density << "]" << std::endl;
+    std::cout << "  Median density: " << median_density << std::endl;
+    std::cout << "  Original threshold: " << density_threshold << std::endl;
+    std::cout << "  Adaptive threshold (0.3*median): " << adaptive_threshold << std::endl;
+    std::cout << "  Using threshold: " << actual_threshold << std::endl;
+
     for (size_t i = 2; i < psi.size(); ++i) {  // Skip poles
         double density = ComplexOps::abs_squared(psi[i]);
 
-        if (density < density_threshold) {
+        if (density < actual_threshold) {
             cores.push_back(i);
         }
+    }
+
+    std::cout << "  Found " << cores.size() << " cores below threshold" << std::endl;
+
+    // Show first few cores
+    size_t show_count = std::min(static_cast<size_t>(5), cores.size());
+    for (size_t i = 0; i < show_count; ++i) {
+        size_t idx = cores[i];
+        double d = ComplexOps::abs_squared(psi[idx]);
+        std::cout << "    Core " << i << ": index=" << idx << ", density=" << d << std::endl;
     }
 
     return cores;
