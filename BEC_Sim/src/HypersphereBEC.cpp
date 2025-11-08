@@ -483,11 +483,15 @@ void HypersphereBEC::save_snapshot() {
 
 void HypersphereBEC::compute_observables(SnapshotStatistics& stats) {
     std::vector<double> densities;
+    std::vector<double> phases;
     densities.reserve(m_n_active - 2);  // Exclude poles
+    phases.reserve(m_n_active - 2);
 
     for (size_t i = 2; i < m_n_active; ++i) {
         double density = ComplexOps::abs_squared(m_psi_cpu[i]);
+        double phase = ComplexOps::phase(m_psi_cpu[i]);
         densities.push_back(density);
+        phases.push_back(phase);
     }
 
     auto density_stats = Statistics::calculate_all(densities);
@@ -498,6 +502,32 @@ void HypersphereBEC::compute_observables(SnapshotStatistics& stats) {
     stats.density_std = density_stats.std_val;
     stats.density_p5 = density_stats.p5;
     stats.density_p95 = density_stats.p95;
+
+    // Calculate phase statistics
+    double phase_sum = 0.0;
+    double phase_sq_sum = 0.0;
+    for (double p : phases) {
+        phase_sum += p;
+        phase_sq_sum += p * p;
+    }
+    stats.phase_mean = phase_sum / phases.size();
+    stats.phase_std = std::sqrt(phase_sq_sum / phases.size() - stats.phase_mean * stats.phase_mean);
+
+    // DEBUG: Print detailed statistics every 100 steps
+    if (m_current_step % 100 == 0) {
+        std::cout << "\n[DEBUG] Wavefunction statistics at step " << m_current_step << ":" << std::endl;
+        std::cout << "  Density: min=" << stats.density_min << ", max=" << stats.density_max
+                  << ", mean=" << stats.density_mean << ", std=" << stats.density_std << std::endl;
+        std::cout << "  Phase: mean=" << stats.phase_mean << ", std=" << stats.phase_std << std::endl;
+
+        // Sample a few wavefunction values
+        std::cout << "  Sample psi values:" << std::endl;
+        for (size_t i = 100; i < std::min((size_t)105, m_n_active); ++i) {
+            Complex psi = m_psi_cpu[i];
+            std::cout << "    psi[" << i << "] = " << psi.real() << " + " << psi.imag() << "i"
+                      << "  |psi|²=" << ComplexOps::abs_squared(psi) << std::endl;
+        }
+    }
 }
 
 void HypersphereBEC::detect_vortices(std::vector<VortexInfo>& vortices) {
