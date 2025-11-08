@@ -90,6 +90,8 @@ These apply to all runs:
 - `--N <value>` - Grid resolution (default: 64)
 - `--seed <value>` - Random seed (default: 42)
 - `--save-every <value>` - Snapshot interval (default: 500)
+- `--init-state <file>` - **NEW**: Load initial state from .bec file (all runs use same state)
+- `--init-snapshot <index>` - **NEW**: Which snapshot to load (default: 0)
 - `--output <file>` - Output CSV file (default: sweep_results.csv)
 
 ### Examples
@@ -112,6 +114,20 @@ bec_sweep \
 **Quick exploration (short runs):**
 ```bash
 bec_sweep --omega 0.5,1.0,1.5,2.0,3.0 --steps 2000 --save-every 1000
+```
+
+**Sweep from pre-equilibrated state:**
+```bash
+# First, create an equilibrated initial state
+bec_sim --omega 0.5 --steps 10000 --output equilibrated.bec
+
+# Then sweep different parameters starting from that state
+bec_sweep \
+  --init-state equilibrated.bec \
+  --init-snapshot 100 \
+  --omega 1.0,1.5,2.0,2.5 \
+  --g 0.08,0.1,0.12 \
+  --steps 5000
 ```
 
 ### Output Format

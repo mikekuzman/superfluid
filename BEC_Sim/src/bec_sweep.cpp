@@ -119,6 +119,12 @@ BEC::SimulationParams get_base_params(int argc, char** argv) {
         else if (arg == "--save-every" && i + 1 < argc) {
             params.save_every = std::atoi(argv[++i]);
         }
+        else if (arg == "--init-state" && i + 1 < argc) {
+            params.init_state_file = argv[++i];
+        }
+        else if (arg == "--init-snapshot" && i + 1 < argc) {
+            params.init_snapshot_index = std::atoi(argv[++i]);
+        }
     }
 
     // Disable file writing for sweep (too much disk space)
@@ -263,9 +269,14 @@ void print_help() {
     std::cout << "  --N <value>              Grid resolution (default: 64)\n";
     std::cout << "  --seed <value>           Random seed (default: 42)\n";
     std::cout << "  --save-every <value>     Snapshot interval (default: 500)\n";
+    std::cout << "  --init-state <file>      Load initial state from .bec file (all runs use same state)\n";
+    std::cout << "  --init-snapshot <index>  Which snapshot to load (default: 0)\n";
     std::cout << "  --output <file>          Results CSV file (default: sweep_results.csv)\n\n";
-    std::cout << "Example:\n";
+    std::cout << "Examples:\n";
+    std::cout << "  # Sweep from random initial state\n";
     std::cout << "  bec_sweep --omega 0.5,1.0,2.0 --g 0.05,0.1 --steps 5000 --output results.csv\n\n";
+    std::cout << "  # Sweep from pre-equilibrated state\n";
+    std::cout << "  bec_sweep --omega 1.0,1.5,2.0 --init-state equilibrated.bec --init-snapshot 100\n\n";
 }
 
 int main(int argc, char** argv) {
