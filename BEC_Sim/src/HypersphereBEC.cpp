@@ -3,6 +3,7 @@
 #include "VortexDetector.h"
 #include "Statistics.h"
 #include "BECFileReader.h"
+#include "SpatialResampler.h"
 #include <iostream>
 #include <chrono>
 #include <cmath>
@@ -115,78 +116,135 @@ HypersphereBEC::~HypersphereBEC() {
 void HypersphereBEC::initialize_geometry() {
     std::cout << "\n--- Initializing Geometry ---" << std::endl;
 
-    // Generate shell points
-    ShellGenerator::generate_shell_points(m_params, m_coords_cpu);
-    m_n_active = m_coords_cpu.size();
+    bool geometry_loaded = false;
 
-    std::cout << "Generated " << m_n_active << " points (including 2 poles)" << std::endl;
+    // Try to load geometry and neighbors from file (if available)
+    if (!m_params.init_state_file.empty()) {
+        BECFileReader reader;
+        if (reader.open(m_params.init_state_file)) {
+            const BECHeader& file_header = reader.get_header();
 
-    // Build neighbor tree
-    NeighborFinder finder;
-    finder.build(m_coords_cpu);
+            // Check if geometry matches exactly
+            bool geometry_matches = (file_header.R == m_params.R &&
+                                    file_header.delta == m_params.delta &&
+                                    file_header.N == m_params.N &&
+                                    file_header.random_seed == m_params.random_seed);
 
-    // Find all neighbors
-    finder.find_all_neighbors(
-        m_coords_cpu,
-        m_params.n_neighbors,
-        m_neighbor_indices,
-        m_neighbor_distances
-    );
+            if (geometry_matches && reader.has_neighbor_data()) {
+                std::cout << "Geometry matches saved state - loading directly..." << std::endl;
 
-    std::cout << "Neighbor finding complete." << std::endl;
+                // Load coordinates and wavefunction
+                std::vector<Vector4> loaded_coords;
+                std::vector<Complex> loaded_psi;
+
+                if (reader.read_wavefunction(m_params.init_snapshot_index, loaded_coords, loaded_psi) &&
+                    reader.read_neighbor_data(m_neighbor_indices, m_neighbor_distances)) {
+
+                    m_coords_cpu = loaded_coords;
+                    m_psi_cpu = loaded_psi;
+                    m_n_active = m_coords_cpu.size();
+
+                    std::cout << "  Loaded " << m_n_active << " points with neighbor graph" << std::endl;
+                    std::cout << "  Skipped geometry generation and neighbor finding (saved ~1-2 seconds)" << std::endl;
+
+                    geometry_loaded = true;
+                }
+            }
+            reader.close();
+        }
+    }
+
+    // Standard geometry generation (if not loaded)
+    if (!geometry_loaded) {
+        // Generate shell points
+        ShellGenerator::generate_shell_points(m_params, m_coords_cpu);
+        m_n_active = m_coords_cpu.size();
+
+        std::cout << "Generated " << m_n_active << " points (including 2 poles)" << std::endl;
+
+        // Build neighbor tree
+        NeighborFinder finder;
+        finder.build(m_coords_cpu);
+
+        // Find all neighbors
+        finder.find_all_neighbors(
+            m_coords_cpu,
+            m_params.n_neighbors,
+            m_neighbor_indices,
+            m_neighbor_distances
+        );
+
+        std::cout << "Neighbor finding complete." << std::endl;
+    }
 }
 
 void HypersphereBEC::initialize_wavefunction() {
     std::cout << "\n--- Initializing Wavefunction ---" << std::endl;
 
+    // Check if wavefunction was already loaded in initialize_geometry()
+    if (!m_psi_cpu.empty() && m_psi_cpu.size() == m_n_active) {
+        std::cout << "Wavefunction already loaded from file (exact geometry match)" << std::endl;
+        return;
+    }
+
     m_psi_cpu.resize(m_n_active);
 
-    // Check if loading from file
+    // Check if loading from file with geometry change
     if (!m_params.init_state_file.empty()) {
         std::cout << "Loading initial state from: " << m_params.init_state_file << std::endl;
         std::cout << "  Snapshot index: " << m_params.init_snapshot_index << std::endl;
 
         BECFileReader reader;
-        if (!reader.open(m_params.init_state_file)) {
-            std::cerr << "Failed to open initial state file: " << m_params.init_state_file << std::endl;
-            std::cerr << "Falling back to random initialization" << std::endl;
-        } else {
+        if (reader.open(m_params.init_state_file)) {
+            const BECHeader& file_header = reader.get_header();
+
+            // Check if geometry differs
+            bool geometry_differs = (file_header.R != m_params.R ||
+                                    file_header.delta != m_params.delta ||
+                                    file_header.N != m_params.N);
+
             std::vector<Vector4> loaded_coords;
             std::vector<Complex> loaded_psi;
 
             if (reader.read_wavefunction(m_params.init_snapshot_index, loaded_coords, loaded_psi)) {
-                // Check if sizes match
-                if (loaded_psi.size() == m_n_active) {
+                if (geometry_differs) {
+                    std::cout << "  Geometry change detected:" << std::endl;
+                    std::cout << "    Old: R=" << file_header.R << ", delta=" << file_header.delta << ", N=" << file_header.N << std::endl;
+                    std::cout << "    New: R=" << m_params.R << ", delta=" << m_params.delta << ", N=" << m_params.N << std::endl;
+                    std::cout << "  Resampling wavefunction with spatial interpolation..." << std::endl;
+
+                    // Resample to new geometry using deterministic noise
+                    SpatialResampler::resample_wavefunction(
+                        loaded_coords,
+                        loaded_psi,
+                        m_coords_cpu,
+                        m_psi_cpu,
+                        m_params.random_seed,
+                        m_params.noise_amplitude
+                    );
+
+                    std::cout << "  Resampling complete (" << m_psi_cpu.size() << " points)" << std::endl;
+                    std::cout << "  Physics preserved via interpolation, new regions use deterministic noise" << std::endl;
+
+                    reader.close();
+                    return;
+                }
+                else if (loaded_psi.size() == m_n_active) {
+                    // Exact match - just use loaded data
                     m_psi_cpu = loaded_psi;
                     std::cout << "Successfully loaded " << loaded_psi.size() << " wavefunction values" << std::endl;
 
-                    // Optionally: verify coordinates match (warn if different)
-                    bool coords_match = true;
-                    for (size_t i = 0; i < std::min(loaded_coords.size(), m_coords_cpu.size()); ++i) {
-                        float dist = (loaded_coords[i] - m_coords_cpu[i]).magnitude();
-                        if (dist > 0.01f) {
-                            coords_match = false;
-                            break;
-                        }
-                    }
-                    if (!coords_match) {
-                        std::cout << "  Warning: Loaded coordinates don't match current geometry" << std::endl;
-                        std::cout << "           Simulation may produce unexpected results" << std::endl;
-                    }
-
                     reader.close();
-                    return; // Success - skip random initialization
-                } else {
-                    std::cerr << "Size mismatch: file has " << loaded_psi.size()
-                              << " points, simulation has " << m_n_active << std::endl;
-                    std::cerr << "Falling back to random initialization" << std::endl;
+                    return;
                 }
-            } else {
-                std::cerr << "Failed to read wavefunction from file" << std::endl;
-                std::cerr << "Falling back to random initialization" << std::endl;
+                else {
+                    std::cerr << "Size mismatch even with same parameters - unexpected!" << std::endl;
+                }
             }
             reader.close();
         }
+
+        std::cerr << "Failed to load from file - falling back to random initialization" << std::endl;
     }
 
     // Random initialization (default or fallback)
