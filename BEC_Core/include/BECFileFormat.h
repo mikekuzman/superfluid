@@ -46,8 +46,13 @@ struct BECHeader {
     Vector4 north_pole_4d;              // North pole: [0, 0, 0, R]
     Vector4 south_pole_4d;              // South pole: [0, 0, 0, -R]
 
+    // Neighbor graph data location (0 = not present)
+    uint64_t neighbor_data_offset;      // File offset to neighbor data (after header)
+    uint32_t neighbor_data_size;        // Size of neighbor data in bytes
+    uint32_t has_neighbor_data;         // 1 if neighbor data present, 0 otherwise
+
     // Reserved for future use (pad to 4096 bytes)
-    uint8_t reserved[BEC_HEADER_SIZE - 84];
+    uint8_t reserved[BEC_HEADER_SIZE - 100];
 
     // Constructor with defaults
     BECHeader() {

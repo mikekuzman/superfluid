@@ -258,6 +258,10 @@ void HypersphereBEC::setup_file_writer() {
     // Create file writer
     m_file_writer = std::make_unique<BECFileWriter>(m_params.output_file, header);
 
+    // Write neighbor graph data (saves ~1-2 seconds on reload)
+    m_file_writer->write_neighbor_data(m_neighbor_indices, m_neighbor_distances);
+    std::cout << "  Saved neighbor graph (" << m_neighbor_indices.size() << " elements)" << std::endl;
+
     std::cout << "\nOutput file: " << m_params.output_file << std::endl;
 }
 

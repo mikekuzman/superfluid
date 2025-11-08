@@ -245,6 +245,45 @@ bool BECFileReader::read_wavefunction(size_t index, std::vector<Vector4>& coords
     return true;
 }
 
+bool BECFileReader::read_neighbor_data(std::vector<int>& neighbor_indices,
+                                       std::vector<float>& neighbor_distances) {
+    if (!m_header.has_neighbor_data) {
+        return false;
+    }
+
+    // Open file for reading
+    std::ifstream file(m_filename, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for reading neighbor data" << std::endl;
+        return false;
+    }
+
+    // Seek to neighbor data
+    file.seekg(m_header.neighbor_data_offset, std::ios::beg);
+
+    // Calculate sizes
+    size_t n_elements = m_header.n_points_per_snapshot * m_header.n_neighbors;
+
+    // Resize output vectors
+    neighbor_indices.resize(n_elements);
+    neighbor_distances.resize(n_elements);
+
+    // Read indices
+    file.read(reinterpret_cast<char*>(neighbor_indices.data()),
+              n_elements * sizeof(int));
+
+    // Read distances
+    file.read(reinterpret_cast<char*>(neighbor_distances.data()),
+              n_elements * sizeof(float));
+
+    if (!file.good()) {
+        std::cerr << "Error reading neighbor data from file" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 bool BECFileReader::read_vortices(size_t index, std::vector<VortexInfo>& vortices) {
     // Simplified: return empty for now
     vortices.clear();

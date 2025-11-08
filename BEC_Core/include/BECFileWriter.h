@@ -21,6 +21,16 @@ public:
     BECFileWriter& operator=(const BECFileWriter&) = delete;
 
     /**
+     * Write neighbor graph data (call before adding snapshots)
+     * @param neighbor_indices - Neighbor indices (n_points × n_neighbors)
+     * @param neighbor_distances - Neighbor distances (n_points × n_neighbors)
+     */
+    bool write_neighbor_data(
+        const std::vector<int>& neighbor_indices,
+        const std::vector<float>& neighbor_distances
+    );
+
+    /**
      * Add a snapshot to the file
      * @param points - Array of point data
      * @param stats - Snapshot statistics

@@ -64,6 +64,18 @@ public:
                           std::vector<Complex>& psi);
 
     /**
+     * Read neighbor graph data (if present in file)
+     * Returns true if neighbor data was loaded, false if not present
+     */
+    bool read_neighbor_data(std::vector<int>& neighbor_indices,
+                            std::vector<float>& neighbor_distances);
+
+    /**
+     * Check if file contains neighbor data
+     */
+    bool has_neighbor_data() const { return m_header.has_neighbor_data != 0; }
+
+    /**
      * Read vortices for a snapshot (if available)
      */
     bool read_vortices(size_t index, std::vector<VortexInfo>& vortices);

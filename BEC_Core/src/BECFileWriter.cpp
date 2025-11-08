@@ -126,6 +126,53 @@ bool BECFileWriter::compress_and_write(const std::vector<PointData>& points, Sna
     return m_file.good();
 }
 
+bool BECFileWriter::write_neighbor_data(
+    const std::vector<int>& neighbor_indices,
+    const std::vector<float>& neighbor_distances)
+{
+    if (!m_file.is_open()) {
+        std::cerr << "File not open" << std::endl;
+        return false;
+    }
+
+    // Neighbor data should be written right after header, before any snapshots
+    if (!m_snapshot_indices.empty()) {
+        std::cerr << "Warning: Neighbor data should be written before adding snapshots" << std::endl;
+    }
+
+    // Verify sizes match expected values
+    size_t expected_size = m_header.n_points_per_snapshot * m_header.n_neighbors;
+    if (neighbor_indices.size() != expected_size || neighbor_distances.size() != expected_size) {
+        std::cerr << "Neighbor data size mismatch: expected " << expected_size
+                  << ", got indices=" << neighbor_indices.size()
+                  << ", distances=" << neighbor_distances.size() << std::endl;
+        return false;
+    }
+
+    // Record current position (should be right after header = 4096)
+    m_header.neighbor_data_offset = m_file.tellp();
+
+    // Write neighbor indices
+    m_file.write(reinterpret_cast<const char*>(neighbor_indices.data()),
+                 neighbor_indices.size() * sizeof(int));
+
+    // Write neighbor distances
+    m_file.write(reinterpret_cast<const char*>(neighbor_distances.data()),
+                 neighbor_distances.size() * sizeof(float));
+
+    // Update header with size and flag
+    m_header.neighbor_data_size = (neighbor_indices.size() * sizeof(int)) +
+                                   (neighbor_distances.size() * sizeof(float));
+    m_header.has_neighbor_data = 1;
+
+    // Update header in file
+    std::streampos current_pos = m_file.tellp();
+    write_header();
+    m_file.seekp(current_pos);
+
+    return m_file.good();
+}
+
 bool BECFileWriter::finalize() {
     if (!m_file.is_open()) {
         return false;
