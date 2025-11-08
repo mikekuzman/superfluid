@@ -12,6 +12,7 @@ set(SIM_SOURCES
     src/ShellGenerator.cpp
     src/NeighborFinder.cpp
     src/VortexDetector.cpp
+    src/SpatialResampler.cpp
 )
 
 set(SIM_HEADERS
@@ -20,6 +21,7 @@ set(SIM_HEADERS
     include/NeighborFinder.h
     include/VortexDetector.h
     include/SimulationParams.h
+    include/SpatialResampler.h
 )
 
 # CUDA kernels
@@ -99,6 +101,7 @@ set(SWEEP_SOURCES
     src/ShellGenerator.cpp
     src/NeighborFinder.cpp
     src/VortexDetector.cpp
+    src/SpatialResampler.cpp
 )
 
 if(USE_CUDA)
