@@ -1,8 +1,11 @@
 #include "cuda_common.cuh"
 
 /**
- * Compute rotation term: Ω L_z ψ
+ * Compute rotation term: -Ω L_z ψ
  * where L_z = w * ∂_x - x * ∂_w
+ *
+ * Returns -Ω L_z ψ (real scaling). The -i factor for time evolution
+ * is applied later in gpe_rhs_kernel.
  *
  * Approximation using finite differences with neighbors
  */
@@ -72,14 +75,9 @@ __global__ void compute_rotation_term_kernel(
         complex_scale(grad_w, pos.x)
     );
 
-    // Multiply by -iΩ (rotation term)
-    // -i * Lz_psi = -i * (a + ib) = b - ia
-    cuDoubleComplex result = make_cuDoubleComplex(
-        -omega * cuCimag(Lz_psi),
-        omega * cuCreal(Lz_psi)
-    );
-
-    rotation_term[idx] = result;
+    // Rotation term: -Ω L_z ψ
+    // Note: The factor of -i is applied in gpe_rhs_kernel when multiplying entire RHS
+    rotation_term[idx] = complex_scale(Lz_psi, -omega);
 }
 
 // Host wrapper
