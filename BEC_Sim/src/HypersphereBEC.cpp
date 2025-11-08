@@ -314,27 +314,100 @@ void HypersphereBEC::evolve_gpe_rk4() {
     float omega = m_params.omega;
 
     // k1 = F(psi)
-    compute_laplacian();
-    compute_rotation_term();
+    // Compute laplacian and rotation for current psi
+    launch_laplacian_kernel(
+        (cuDoubleComplex*)m_psi_gpu,
+        (cuDoubleComplex*)m_laplacian_gpu,
+        (int*)m_neighbor_indices_gpu,
+        (float*)m_neighbor_distances_gpu,
+        m_n_active,
+        m_params.n_neighbors
+    );
+    launch_rotation_kernel(
+        (cuDoubleComplex*)m_psi_gpu,
+        (float4_custom*)m_coords_gpu,
+        (int*)m_neighbor_indices_gpu,
+        (float*)m_neighbor_distances_gpu,
+        (cuDoubleComplex*)m_rotation_term_gpu,
+        m_params.omega,
+        m_n_active,
+        m_params.n_neighbors
+    );
     launch_gpe_rhs_kernel((cuDoubleComplex*)m_psi_gpu, (cuDoubleComplex*)m_laplacian_gpu,
                           (cuDoubleComplex*)m_rotation_term_gpu, (cuDoubleComplex*)m_k1_gpu, g, n);
 
     // k2 = F(psi + dt*k1/2)
     launch_axpy_kernel((cuDoubleComplex*)m_psi_gpu, (cuDoubleComplex*)m_k1_gpu,
                       (cuDoubleComplex*)m_psi_temp_gpu, dt/2, n);
-    // (Would recompute laplacian and rotation for psi_temp, simplified here)
+    // Recompute laplacian and rotation for psi_temp
+    launch_laplacian_kernel(
+        (cuDoubleComplex*)m_psi_temp_gpu,
+        (cuDoubleComplex*)m_laplacian_gpu,
+        (int*)m_neighbor_indices_gpu,
+        (float*)m_neighbor_distances_gpu,
+        m_n_active,
+        m_params.n_neighbors
+    );
+    launch_rotation_kernel(
+        (cuDoubleComplex*)m_psi_temp_gpu,
+        (float4_custom*)m_coords_gpu,
+        (int*)m_neighbor_indices_gpu,
+        (float*)m_neighbor_distances_gpu,
+        (cuDoubleComplex*)m_rotation_term_gpu,
+        m_params.omega,
+        m_n_active,
+        m_params.n_neighbors
+    );
     launch_gpe_rhs_kernel((cuDoubleComplex*)m_psi_temp_gpu, (cuDoubleComplex*)m_laplacian_gpu,
                           (cuDoubleComplex*)m_rotation_term_gpu, (cuDoubleComplex*)m_k2_gpu, g, n);
 
     // k3 = F(psi + dt*k2/2)
     launch_axpy_kernel((cuDoubleComplex*)m_psi_gpu, (cuDoubleComplex*)m_k2_gpu,
                       (cuDoubleComplex*)m_psi_temp_gpu, dt/2, n);
+    // Recompute laplacian and rotation for psi_temp
+    launch_laplacian_kernel(
+        (cuDoubleComplex*)m_psi_temp_gpu,
+        (cuDoubleComplex*)m_laplacian_gpu,
+        (int*)m_neighbor_indices_gpu,
+        (float*)m_neighbor_distances_gpu,
+        m_n_active,
+        m_params.n_neighbors
+    );
+    launch_rotation_kernel(
+        (cuDoubleComplex*)m_psi_temp_gpu,
+        (float4_custom*)m_coords_gpu,
+        (int*)m_neighbor_indices_gpu,
+        (float*)m_neighbor_distances_gpu,
+        (cuDoubleComplex*)m_rotation_term_gpu,
+        m_params.omega,
+        m_n_active,
+        m_params.n_neighbors
+    );
     launch_gpe_rhs_kernel((cuDoubleComplex*)m_psi_temp_gpu, (cuDoubleComplex*)m_laplacian_gpu,
                           (cuDoubleComplex*)m_rotation_term_gpu, (cuDoubleComplex*)m_k3_gpu, g, n);
 
     // k4 = F(psi + dt*k3)
     launch_axpy_kernel((cuDoubleComplex*)m_psi_gpu, (cuDoubleComplex*)m_k3_gpu,
                       (cuDoubleComplex*)m_psi_temp_gpu, dt, n);
+    // Recompute laplacian and rotation for psi_temp
+    launch_laplacian_kernel(
+        (cuDoubleComplex*)m_psi_temp_gpu,
+        (cuDoubleComplex*)m_laplacian_gpu,
+        (int*)m_neighbor_indices_gpu,
+        (float*)m_neighbor_distances_gpu,
+        m_n_active,
+        m_params.n_neighbors
+    );
+    launch_rotation_kernel(
+        (cuDoubleComplex*)m_psi_temp_gpu,
+        (float4_custom*)m_coords_gpu,
+        (int*)m_neighbor_indices_gpu,
+        (float*)m_neighbor_distances_gpu,
+        (cuDoubleComplex*)m_rotation_term_gpu,
+        m_params.omega,
+        m_n_active,
+        m_params.n_neighbors
+    );
     launch_gpe_rhs_kernel((cuDoubleComplex*)m_psi_temp_gpu, (cuDoubleComplex*)m_laplacian_gpu,
                           (cuDoubleComplex*)m_rotation_term_gpu, (cuDoubleComplex*)m_k4_gpu, g, n);
 
@@ -349,31 +422,11 @@ void HypersphereBEC::evolve_gpe_rk4() {
 }
 
 void HypersphereBEC::compute_laplacian() {
-#ifdef USE_CUDA
-    launch_laplacian_kernel(
-        (cuDoubleComplex*)m_psi_gpu,
-        (cuDoubleComplex*)m_laplacian_gpu,
-        (int*)m_neighbor_indices_gpu,
-        (float*)m_neighbor_distances_gpu,
-        m_n_active,
-        m_params.n_neighbors
-    );
-#endif
+    // No longer used - RK4 computes laplacian inline for each stage
 }
 
 void HypersphereBEC::compute_rotation_term() {
-#ifdef USE_CUDA
-    launch_rotation_kernel(
-        (cuDoubleComplex*)m_psi_gpu,
-        (float4_custom*)m_coords_gpu,
-        (int*)m_neighbor_indices_gpu,
-        (float*)m_neighbor_distances_gpu,
-        (cuDoubleComplex*)m_rotation_term_gpu,
-        m_params.omega,
-        m_n_active,
-        m_params.n_neighbors
-    );
-#endif
+    // No longer used - RK4 computes rotation inline for each stage
 }
 
 void HypersphereBEC::save_snapshot() {
