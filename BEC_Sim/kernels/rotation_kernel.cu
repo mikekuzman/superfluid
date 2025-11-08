@@ -1,11 +1,8 @@
 #include "cuda_common.cuh"
 
 /**
- * Compute rotation term for GPE in rotating frame
+ * Compute rotation term: Ω L_z ψ
  * where L_z = w * ∂_x - x * ∂_w
- *
- * The formula below produces ω*L_z*ψ contribution after the -i
- * multiplication in gpe_rhs_kernel.
  *
  * Approximation using finite differences with neighbors
  */
@@ -75,8 +72,8 @@ __global__ void compute_rotation_term_kernel(
         complex_scale(grad_w, pos.x)
     );
 
-    // Rotation term formula: After the -i multiplication in gpe_rhs_kernel,
-    // this produces ω*L_z*ψ contribution to the time derivative
+    // Multiply by -iΩ (rotation term)
+    // -i * Lz_psi = -i * (a + ib) = b - ia
     cuDoubleComplex result = make_cuDoubleComplex(
         -omega * cuCimag(Lz_psi),
         omega * cuCreal(Lz_psi)
