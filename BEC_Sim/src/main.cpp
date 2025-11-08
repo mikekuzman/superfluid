@@ -48,6 +48,12 @@ BEC::SimulationParams parse_arguments(int argc, char** argv) {
         else if (arg == "--neighbors" && i + 1 < argc) {
             params.n_neighbors = std::atoi(argv[++i]);
         }
+        else if (arg == "--init-state" && i + 1 < argc) {
+            params.init_state_file = argv[++i];
+        }
+        else if (arg == "--init-snapshot" && i + 1 < argc) {
+            params.init_snapshot_index = std::atoi(argv[++i]);
+        }
         else if (arg == "--help" || arg == "-h") {
             std::cout << "4D Bose-Einstein Condensate Simulator\n\n";
             std::cout << "Usage: bec_sim [options]\n\n";
@@ -64,6 +70,8 @@ BEC::SimulationParams parse_arguments(int argc, char** argv) {
             std::cout << "  --output <file>          Output file (default: output.bec)\n";
             std::cout << "  --seed <value>           Random seed (default: 42)\n";
             std::cout << "  --neighbors <value>      Neighbors for gradients (default: 6)\n";
+            std::cout << "  --init-state <file>      Load initial state from .bec file\n";
+            std::cout << "  --init-snapshot <index>  Which snapshot to load (default: 0)\n";
             std::cout << "  --help, -h               Show this help\n\n";
             std::cout << "Example:\n";
             std::cout << "  bec_sim --R 1000 --thickness-ratio 40 --omega 0.5 --steps 5000\n";

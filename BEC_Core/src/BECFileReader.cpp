@@ -210,6 +210,41 @@ bool BECFileReader::decompress_snapshot(const SnapshotIndex& index, std::vector<
     return true;
 }
 
+bool BECFileReader::read_wavefunction(size_t index, std::vector<Vector4>& coords,
+                                      std::vector<Complex>& psi) {
+    // Read snapshot data
+    std::vector<PointData> points;
+    if (!read_snapshot(index, points)) {
+        return false;
+    }
+
+    // Resize output vectors
+    coords.resize(points.size());
+    psi.resize(points.size());
+
+    // Dequantize coordinates and reconstruct wavefunction
+    for (size_t i = 0; i < points.size(); ++i) {
+        // Dequantize coordinates (use header R for range)
+        float coord_min = -(m_header.R + m_header.delta);
+        float coord_max = m_header.R + m_header.delta;
+
+        coords[i].w = Quantization::dequantize_coord(points[i].coord[0], coord_min, coord_max);
+        coords[i].x = Quantization::dequantize_coord(points[i].coord[1], coord_min, coord_max);
+        coords[i].y = Quantization::dequantize_coord(points[i].coord[2], coord_min, coord_max);
+        coords[i].z = Quantization::dequantize_coord(points[i].coord[3], coord_min, coord_max);
+
+        // Reconstruct wavefunction from density and phase
+        float density = Quantization::float16_to_float(points[i].density);
+        float phase = Quantization::dequantize_phase(points[i].phase);
+
+        // ψ = √ρ * e^(iφ)
+        double amplitude = std::sqrt(std::max(0.0f, density));
+        psi[i] = Complex(amplitude * std::cos(phase), amplitude * std::sin(phase));
+    }
+
+    return true;
+}
+
 bool BECFileReader::read_vortices(size_t index, std::vector<VortexInfo>& vortices) {
     // Simplified: return empty for now
     vortices.clear();

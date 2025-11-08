@@ -36,6 +36,8 @@ struct SimulationParams {
 
     // Initial condition
     float noise_amplitude = 0.01f;  // Initial noise amplitude
+    std::string init_state_file = "";   // Load initial state from this file (empty = random)
+    uint32_t init_snapshot_index = 0;   // Which snapshot to load (0 = first)
 
     // Analysis
     bool detect_vortices = true;

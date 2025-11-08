@@ -92,7 +92,47 @@ target_include_directories(inspect_bec PRIVATE
 )
 target_link_libraries(inspect_bec PRIVATE BEC_Core)
 
+# Parameter sweep tool
+set(SWEEP_SOURCES
+    src/bec_sweep.cpp
+    src/HypersphereBEC.cpp
+    src/ShellGenerator.cpp
+    src/NeighborFinder.cpp
+    src/VortexDetector.cpp
+)
+
+if(USE_CUDA)
+    add_executable(bec_sweep ${SWEEP_SOURCES} ${SIM_HEADERS} ${CUDA_SOURCES})
+    set_target_properties(bec_sweep PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_target_properties(bec_sweep PROPERTIES CUDA_ARCHITECTURES "61;75;86")
+    target_compile_definitions(bec_sweep PRIVATE USE_CUDA)
+    target_link_libraries(bec_sweep PRIVATE CUDA::cudart CUDA::curand)
+
+    # CUDA compiler flags
+    target_compile_options(bec_sweep PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>")
+    target_compile_options(bec_sweep PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:RELEASE>>:-O3>")
+    target_compile_options(bec_sweep PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:-Wno-deprecated-gpu-targets>")
+else()
+    add_executable(bec_sweep ${SWEEP_SOURCES} ${SIM_HEADERS})
+    target_compile_definitions(bec_sweep PRIVATE NO_CUDA)
+endif()
+
+target_include_directories(bec_sweep PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(bec_sweep PRIVATE BEC_Core)
+
+if(UNIX)
+    target_link_libraries(bec_sweep PRIVATE m pthread)
+endif()
+
+# Compiler flags for bec_sweep
+if(MSVC)
+    target_compile_options(bec_sweep PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/W3;/MP>")
+    target_compile_options(bec_sweep PRIVATE "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:RELEASE>>:/O2;/Oi;/GL;/fp:fast;/arch:AVX2>")
+else()
+    target_compile_options(bec_sweep PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:RELEASE>:-O3;-march=native;-ffast-math>>")
+endif()
+
 # Install
-install(TARGETS bec_sim inspect_bec
+install(TARGETS bec_sim inspect_bec bec_sweep
     RUNTIME DESTINATION bin
 )

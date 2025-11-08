@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BECFileFormat.h"
+#include "Complex.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -54,6 +55,13 @@ public:
      * Read a specific snapshot
      */
     bool read_snapshot(size_t index, std::vector<PointData>& points);
+
+    /**
+     * Read snapshot and reconstruct wavefunction
+     * Loads coordinates and complex wavefunction values
+     */
+    bool read_wavefunction(size_t index, std::vector<Vector4>& coords,
+                          std::vector<Complex>& psi);
 
     /**
      * Read vortices for a snapshot (if available)

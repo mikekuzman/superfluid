@@ -2,6 +2,7 @@
 #include "ShellGenerator.h"
 #include "VortexDetector.h"
 #include "Statistics.h"
+#include "BECFileReader.h"
 #include <iostream>
 #include <chrono>
 #include <cmath>
@@ -140,7 +141,55 @@ void HypersphereBEC::initialize_wavefunction() {
 
     m_psi_cpu.resize(m_n_active);
 
-    // Random number generator
+    // Check if loading from file
+    if (!m_params.init_state_file.empty()) {
+        std::cout << "Loading initial state from: " << m_params.init_state_file << std::endl;
+        std::cout << "  Snapshot index: " << m_params.init_snapshot_index << std::endl;
+
+        BECFileReader reader;
+        if (!reader.open(m_params.init_state_file)) {
+            std::cerr << "Failed to open initial state file: " << m_params.init_state_file << std::endl;
+            std::cerr << "Falling back to random initialization" << std::endl;
+        } else {
+            std::vector<Vector4> loaded_coords;
+            std::vector<Complex> loaded_psi;
+
+            if (reader.read_wavefunction(m_params.init_snapshot_index, loaded_coords, loaded_psi)) {
+                // Check if sizes match
+                if (loaded_psi.size() == m_n_active) {
+                    m_psi_cpu = loaded_psi;
+                    std::cout << "Successfully loaded " << loaded_psi.size() << " wavefunction values" << std::endl;
+
+                    // Optionally: verify coordinates match (warn if different)
+                    bool coords_match = true;
+                    for (size_t i = 0; i < std::min(loaded_coords.size(), m_coords_cpu.size()); ++i) {
+                        float dist = (loaded_coords[i] - m_coords_cpu[i]).length();
+                        if (dist > 0.01f) {
+                            coords_match = false;
+                            break;
+                        }
+                    }
+                    if (!coords_match) {
+                        std::cout << "  Warning: Loaded coordinates don't match current geometry" << std::endl;
+                        std::cout << "           Simulation may produce unexpected results" << std::endl;
+                    }
+
+                    reader.close();
+                    return; // Success - skip random initialization
+                } else {
+                    std::cerr << "Size mismatch: file has " << loaded_psi.size()
+                              << " points, simulation has " << m_n_active << std::endl;
+                    std::cerr << "Falling back to random initialization" << std::endl;
+                }
+            } else {
+                std::cerr << "Failed to read wavefunction from file" << std::endl;
+                std::cerr << "Falling back to random initialization" << std::endl;
+            }
+            reader.close();
+        }
+    }
+
+    // Random initialization (default or fallback)
     std::mt19937 rng(m_params.random_seed);
     std::normal_distribution<double> dist(0.0, 1.0);
 
