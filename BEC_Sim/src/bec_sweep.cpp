@@ -158,15 +158,14 @@ SweepResult run_simulation(const BEC::SimulationParams& params) {
         result.computation_time_sec = duration.count() / 1000.0f;
 
         // Extract vortex statistics from file
-        BECFileReader reader;
+        BEC::BECFileReader reader;
         if (reader.open("sweep_temp.bec")) {
             for (size_t i = 0; i < reader.get_snapshot_count(); ++i) {
                 const auto& stats = reader.get_snapshot_stats(i);
                 result.total_vortices += stats.n_vortices;
-                result.max_vortices_per_snapshot = std::max(
-                    result.max_vortices_per_snapshot,
-                    stats.n_vortices
-                );
+                if (stats.n_vortices > result.max_vortices_per_snapshot) {
+                    result.max_vortices_per_snapshot = stats.n_vortices;
+                }
                 result.final_time = stats.time;
             }
             reader.close();

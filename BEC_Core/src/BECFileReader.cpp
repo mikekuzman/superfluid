@@ -238,7 +238,7 @@ bool BECFileReader::read_wavefunction(size_t index, std::vector<Vector4>& coords
         float phase = Quantization::dequantize_phase(points[i].phase);
 
         // ψ = √ρ * e^(iφ)
-        double amplitude = std::sqrt(std::max(0.0f, density));
+        double amplitude = std::sqrt(density > 0.0f ? density : 0.0f);
         psi[i] = Complex(amplitude * std::cos(phase), amplitude * std::sin(phase));
     }
 

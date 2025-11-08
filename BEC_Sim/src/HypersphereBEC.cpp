@@ -163,7 +163,7 @@ void HypersphereBEC::initialize_wavefunction() {
                     // Optionally: verify coordinates match (warn if different)
                     bool coords_match = true;
                     for (size_t i = 0; i < std::min(loaded_coords.size(), m_coords_cpu.size()); ++i) {
-                        float dist = (loaded_coords[i] - m_coords_cpu[i]).length();
+                        float dist = (loaded_coords[i] - m_coords_cpu[i]).magnitude();
                         if (dist > 0.01f) {
                             coords_match = false;
                             break;
