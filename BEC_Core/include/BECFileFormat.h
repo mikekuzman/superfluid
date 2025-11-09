@@ -52,7 +52,8 @@ struct BECHeader {
     uint32_t has_neighbor_data;         // 1 if neighbor data present, 0 otherwise
 
     // Reserved for future use (pad to 4096 bytes)
-    uint8_t reserved[BEC_HEADER_SIZE - 100];
+    // Note: 104 accounts for 4 bytes of padding before neighbor_data_offset (8-byte alignment)
+    uint8_t reserved[BEC_HEADER_SIZE - 104];
 
     // Constructor with defaults
     BECHeader() {
